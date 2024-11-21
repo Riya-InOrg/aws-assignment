@@ -4,7 +4,7 @@ const bodyParser = require('body-parser');
 require('dotenv').config(); // To load environment variables from .env file
 
 const app = express();
-const port = 5000;
+const port = 3000;
 
 // Middleware to parse JSON request bodies
 app.use(bodyParser.json());
