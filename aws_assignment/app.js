@@ -1,6 +1,7 @@
 const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
+require('dotenv').config(); // To load environment variables from .env file
 
 const app = express();
 const port = 3000;
@@ -8,63 +9,77 @@ const port = 3000;
 // Middleware to parse JSON request bodies
 app.use(bodyParser.json());
 
-// MySQL connection setup
-const db = mysql.createConnection({
-    host: 'localhost', // your MySQL host
-    user: 'root', // your MySQL user
-    password: 'user', // your MySQL password
-    database: 'simple_app', // your database name
+// MySQL connection pool setup (using environment variables for sensitive data)
+const db = mysql.createPool({
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || 'user',
+    database: process.env.DB_NAME || 'simple_app',
+    waitForConnections: true,
+    connectionLimit: 10, // Customize as needed
+    queueLimit: 0
 });
 
-db.connect(err => {
-    if (err) {
-        console.error('Database connection error: ', err);
-        return;
-    }
-    console.log('Connected to the MySQL database.');
+// Helper function to query the database
+const queryDatabase = (query, params) => {
+    return new Promise((resolve, reject) => {
+        db.query(query, params, (err, results) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(results);
+            }
+        });
+    });
+};
+
+// Route for the home page (root URL)
+app.get('/', (req, res) => {
+    res.status(200).send('Hi, welcome to the home page');
 });
 
 // API Routes
 
 // GET: Retrieve all users
-app.get('/users', (req, res) => {
-    db.query('SELECT * FROM users', (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+app.get('/users', async (req, res) => {
+    try {
+        const results = await queryDatabase('SELECT * FROM users');
         res.status(200).json(results);
-    });
+    } catch (err) {
+        res.status(500).json({ error: 'Database query error: ' + err.message });
+    }
 });
 
 // POST: Add a new user
-app.post('/users', (req, res) => {
+app.post('/users', async (req, res) => {
     const { name, email } = req.body;
     if (!name || !email) {
         return res.status(400).json({ message: 'Name and email are required' });
     }
 
-    const query = 'INSERT INTO users (name, email) VALUES (?, ?)';
-    db.query(query, [name, email], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const results = await queryDatabase('INSERT INTO users (name, email) VALUES (?, ?)', [name, email]);
         res.status(201).json({ id: results.insertId, name, email });
-    });
+    } catch (err) {
+        res.status(500).json({ error: 'Database query error: ' + err.message });
+    }
 });
 
 // DELETE: Remove a user by ID
-app.delete('/users/:id', (req, res) => {
+app.delete('/users/:id', async (req, res) => {
     const userId = req.params.id;
-    const query = 'DELETE FROM users WHERE id = ?';
-    db.query(query, [userId], (err, results) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+
+    try {
+        const results = await queryDatabase('DELETE FROM users WHERE id = ?', [userId]);
+
         if (results.affectedRows === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
+
         res.status(200).json({ message: 'User deleted' });
-    });
+    } catch (err) {
+        res.status(500).json({ error: 'Database query error: ' + err.message });
+    }
 });
 
 // Start the server
