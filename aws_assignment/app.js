@@ -1,7 +1,8 @@
+
 const express = require('express');
 const mysql = require('mysql2');
 const bodyParser = require('body-parser');
-require('dotenv').config(); // To load environment variables from .env file
+// require('dotenv').config(); // To load environment variables from .env file
 
 const app = express();
 const port = 3000;
@@ -11,10 +12,10 @@ app.use(bodyParser.json());
 
 // MySQL connection pool setup (using environment variables for sensitive data)
 const db = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'user',
-    database: process.env.DB_NAME || 'simple_app',
+    host: 'localhost',
+    user: 'root',
+    password: 'user',
+    database: 'simple_app',
     waitForConnections: true,
     connectionLimit: 10, // Customize as needed
     queueLimit: 0
@@ -84,5 +85,5 @@ app.delete('/users/:id', async (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Server running at ${port}`);
 });
